@@ -1,0 +1,154 @@
+<template>
+  <q-page class="q-pa-sm">
+    <q-card>
+      <q-card-section>
+        <div class="text-h6 text-grey-8">
+          {{ $t('informationPages') }}
+          <div class="float-right">
+            <q-btn :label="$t('add')" :to="{name:'informationAdd'}" class="text-capitalize q-mr-md" icon="add"
+                   color="primary"/>
+            <q-btn :label="$t('bulkDelete')" @click="onBulkDelete()" class="text-capitalize" icon="delete"
+                   color="red"/>
+          </div>
+        </div>
+      </q-card-section>
+      <q-card-section class="q-pa-none">
+        <q-table
+          :loading="loading"
+          :columns="columns"
+          :rows="informationList"
+          row-key="id"
+          :filter="filter"
+          selection="multiple"
+          v-model:selected="selected"
+          v-model:pagination="pagination"
+          :rows-per-page-options="[15,25,30,40,50,100]"
+          @request="onRequest"
+        >
+          <template #top-right>
+            <q-input borderless dense debounce="300" v-model="filter" :placeholder="$t('search')">
+              <template v-slot:append>
+                <q-icon name="search"/>
+              </template>
+            </q-input>
+          </template>
+
+          <template #body-cell-createdAt="props">
+            <q-td :props="props">
+              {{ helpers.formatDate(props.row.created_at) }}
+            </q-td>
+          </template>
+
+          <template #body-cell-action="props">
+            <q-td :props="props">
+              <q-btn
+                class="q-mr-md"
+                color="primary"
+                icon-right="edit"
+                no-caps
+                flat
+                dense
+                :to="{name:'informationEdit',params: {id:props.row.id}}"
+              />
+              <q-btn
+                color="red"
+                icon-right="delete"
+                no-caps
+                flat
+                dense
+                @click="onDelete(props)"
+              />
+            </q-td>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+  </q-page>
+</template>
+
+<script>
+import {defineComponent} from 'vue'
+import {mapActions} from 'vuex'
+import helpers from 'src/helpers/helper'
+
+export default defineComponent({
+  name: 'InformationList',
+  data() {
+    return {
+      helpers,
+      informationList: [],
+      selected: [],
+      filter: '',
+      pagination: {
+        page: 1,
+        rowsPerPage: 25,
+        rowsNumber: 0,
+        sortBy: ''
+      },
+      loading: true,
+      columns: [
+        {name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true},
+        {name: 'title', label: this.$t('title'), field: 'title', align: 'left', sortable: true},
+        {name: 'sort_order', label: this.$t('sortOrder'), field: 'sort_order', align: 'left', sortable: true},
+        {name: 'createdAt', label: this.$t('createdAt'), field: 'created_at', align: 'left'},
+        {name: 'action', label: this.$t('actions'), field: 'action'}
+      ]
+    }
+  },
+  methods: {
+    ...mapActions('information', ['fetchInformation', 'deleteInformation']),
+    request(data = {}) {
+      this.fetchInformation(data).then((res) => {
+        this.informationList = res.data.data;
+        this.pagination.page = res.data.meta.current_page;
+        this.pagination.rowsPerPage = res.data.meta.per_page;
+        this.pagination.rowsNumber = res.data.meta.total;
+      }).finally(() => {
+        this.loading = false;
+      });
+    },
+    onRequest(props) {
+      let sortBy = props.pagination.sortBy;
+      if (this.pagination.descending) {
+        this.pagination.descending = false;
+      } else {
+        this.pagination.descending = true;
+        sortBy = '-' + sortBy;
+      }
+      this.request({
+        params: {
+          page: props.pagination.page,
+          per_page: props.pagination.rowsPerPage,
+          sort_by: sortBy,
+          q: JSON.parse(JSON.stringify(props.filter))
+        }
+      });
+    },
+    onDelete(item) {
+      const index = this.informationList.indexOf(item.row);
+      if (confirm(this.$t('sureToDelete'))) {
+        this.informationList.splice(index, 1);
+        this.deleteInformation({id: item.row.id});
+      }
+    },
+    onBulkDelete() {
+      if (confirm(this.$t('sureToDelete'))) {
+        const ids = this.selected.map(x => x.id);
+        ids.forEach((x, i) => {
+          let index = this.informationList.findIndex(function (u) {
+            return u.id === x;
+          });
+          if (index !== -1) {
+            this.informationList.splice(index, 1);
+          }
+          this.deleteInformation({id: x});
+        });
+      }
+
+    }
+  },
+  created() {
+    this.request();
+  }
+})
+</script>

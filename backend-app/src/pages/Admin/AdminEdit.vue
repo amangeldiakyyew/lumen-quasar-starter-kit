@@ -1,0 +1,57 @@
+<template>
+  <q-page class="q-pa-sm">
+    <q-card>
+      <q-card-section>
+        <div class="text-h6 text-grey-8">
+          {{ $t('editAdmin') }}
+          <div class="float-right">
+            <BackButton></BackButton>
+          </div>
+        </div>
+      </q-card-section>
+      <q-card-section v-if="isReady">
+        <AdminForm :formData="formData" @formSubmit="onSubmit"></AdminForm>
+      </q-card-section>
+    </q-card>
+  </q-page>
+</template>
+
+<script>
+import {defineComponent} from 'vue'
+import AdminForm from "../../components/forms/AdminForm";
+import BackButton from "../../components/buttons/BackButton";
+import {mapActions} from "vuex";
+import notifyHelper from "src/helpers/notifyHelper";
+
+
+export default defineComponent({
+  name: 'UserEdit',
+  components: {
+    AdminForm,
+    BackButton
+  },
+  data: function () {
+    return {
+      isReady: false,
+      formData: {},
+    }
+  },
+  methods: {
+    ...mapActions('admin', ['fetchAdmin', 'updateAdmin']),
+    onSubmit(formData) {
+      let id = this.$route.params.id;
+      this.updateAdmin({id, formData}).then(res => {
+        notifyHelper.success(res);
+        this.$router.go(-1);
+      });
+    }
+  },
+  created() {
+    let $x = this;
+    this.fetchAdmin({id: this.$route.params.id}).then((res) => {
+      $x.formData = res.data.data;
+      $x.isReady = true;
+    });
+  }
+})
+</script>
